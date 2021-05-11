@@ -14,7 +14,7 @@
 #include <type_traits>
 
 #include "google/protobuf/message.h"
-#include "third_party/pybind11_protobuf/proto_utils.h"
+#include "pybind11_protobuf/proto_utils.h"
 
 namespace pybind11 {
 namespace google {
