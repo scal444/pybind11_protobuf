@@ -3,14 +3,12 @@
 // All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-#include "pybind11_protobuf/proto_utils.h"
+#include "third_party/pybind11_protobuf/proto_utils.h"
 
 namespace pybind11 {
 namespace google {
 
-PYBIND11_MODULE(proto, m) {
-  RegisterProtoBindings(m);
-}
+PYBIND11_MODULE(proto, m) { RegisterProtoBindings(m); }
 
 }  // namespace google
 }  // namespace pybind11

@@ -3,8 +3,8 @@
 // All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-#ifndef PYBIND11_PROTOBUF_PROTO_CASTERS_H_
-#define PYBIND11_PROTOBUF_PROTO_CASTERS_H_
+#ifndef THIRD_PARTY_PYBIND11_PROTOBUF_PROTO_CASTERS_H_
+#define THIRD_PARTY_PYBIND11_PROTOBUF_PROTO_CASTERS_H_
 
 #include <pybind11/cast.h>
 #include <pybind11/pybind11.h>
@@ -13,38 +13,22 @@
 #include <stdexcept>
 #include <type_traits>
 
-#include "net/proto2/public/message.h"
-#include "pybind11_protobuf/proto_utils.h"
-
-#if defined(PYBIND11_PROTOBUF_FAST_CPP_PROTO_CASTERS_H_)
-#error "fast_cpp_proto_casters.h and proto_casters.h conflict."
-#endif
+#include "google/protobuf/message.h"
+#include "third_party/pybind11_protobuf/proto_utils.h"
 
 namespace pybind11 {
 namespace google {
 
-// The value of PYBIND11_PROTOBUF_MODULE_PATH will be different depending on
-// whether this is being used inside or outside of google3. The value used
-// inside of google3 is defined here. Outside of google3, change this value by
-// passing "-DPYBIND11_PROTOBUF_MODULE_PATH=..." on the commandline.
-#ifndef PYBIND11_PROTOBUF_MODULE_PATH
-#define PYBIND11_PROTOBUF_MODULE_PATH \
-  google3.third_party.pybind11_protobuf.proto
-#endif
+#define PYBIND11_PROTOBUF_MODULE_PATH third_party.pybind11_protobuf.proto
 
 // Imports the bindings for the proto base types. This not thread safe and
-// should only be called from a PYBIND11_MODULE definition. If modifying this,
-// see g3doc/pybind11_protobuf/README.md#importing-the-proto-module
+// should only be called from a PYBIND11_MODULE definition.
 inline module ImportProtoModule() {
-#if PY_MAJOR_VERSION >= 3
   auto m = reinterpret_borrow<module>(
       PyImport_AddModule(PYBIND11_TOSTRING(PYBIND11_PROTOBUF_MODULE_PATH)));
   if (!IsProtoModuleImported()) RegisterProtoBindings(m);
   // else no-op because bindings are already loaded.
   return m;
-#else
-  return module::import(PYBIND11_TOSTRING(PYBIND11_PROTOBUF_MODULE_PATH));
-#endif
 }
 
 // Registers the given concrete ProtoType with pybind11.
@@ -58,7 +42,7 @@ void RegisterProtoMessageType(module m = module()) {
 }  // namespace google
 
 // Specialize polymorphic_type_hook for proto message types.
-// If ProtoType is a derived type (ie, not proto2::Message), this registers
+// If ProtoType is a derived type (ie, not ::google::protobuf::Message), this registers
 // it and adds a constructor and concrete fields, to avoid the need to call
 // FindFieldByName for every field access.
 template <typename ProtoType>
@@ -72,9 +56,9 @@ struct polymorphic_type_hook<ProtoType,
     if (!out) return nullptr;
 
     if (!detail::get_type_info(*type)) {
-      // Concrete message type is not registered, so cast as a proto2::Message.
-      out = static_cast<const proto2::Message *>(src);
-      type = &typeid(proto2::Message);
+      // Concrete message type is not registered, so cast as a ::google::protobuf::Message.
+      out = static_cast<const ::google::protobuf::Message *>(src);
+      type = &typeid(::google::protobuf::Message);
     }
 
     return out;
@@ -98,15 +82,15 @@ struct type_caster<ProtoType, std::enable_if_t<google::is_proto_v<ProtoType>>>
     if (!google::PyProtoCheckType<IntrinsicProtoType>(src)) return false;
 
     if (google::IsWrappedCProto(src)) {  // Just remove the wrapper.
-      // Concrete ProtoType may not be registered, so load as a proto2::Message.
-      type_caster_base<proto2::Message> base_caster;
+      // Concrete ProtoType may not be registered, so load as a ::google::protobuf::Message.
+      type_caster_base<::google::protobuf::Message> base_caster;
       if (!base_caster.load(src, convert))
         throw type_error(
             "Proto message passed type checks yet failed to be loaded as a "
-            "proto2::Message base class. This should not be possible.");
+            "::google::protobuf::Message base class. This should not be possible.");
       // Since we already checked the type, static cast is safe.
       type_caster_base<ProtoType>::value =
-          static_cast<ProtoType *>(static_cast<proto2::Message *>(base_caster));
+          static_cast<ProtoType *>(static_cast<::google::protobuf::Message *>(base_caster));
       return true;
     }
 
@@ -121,7 +105,7 @@ struct type_caster<ProtoType, std::enable_if_t<google::is_proto_v<ProtoType>>>
   }
 
  private:
-  std::unique_ptr<proto2::Message> owned_value_;
+  std::unique_ptr<::google::protobuf::Message> owned_value_;
 };
 
 // copybara:strip_begin(core pybind11 patch required)
@@ -132,4 +116,4 @@ struct type_caster<ProtoType, std::enable_if_t<google::is_proto_v<ProtoType>>>
 }  // namespace detail
 }  // namespace pybind11
 
-#endif  // PYBIND11_PROTOBUF_PROTO_CASTERS_H_
+#endif  // THIRD_PARTY_PYBIND11_PROTOBUF_PROTO_CASTERS_H_

@@ -1,0 +1,37 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("@pybind11_bazel//:build_defs.bzl", "pybind_extension", "pybind_library")
+
+licenses(["notice"])
+
+exports_files(["LICENSE"])
+
+pybind_library(
+    name = "proto_utils",
+    srcs = ["proto_utils.cc"],
+    hdrs = ["proto_utils.h"],
+    deps = [
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+pybind_library(
+    name = "proto_casters",
+    hdrs = ["proto_casters.h"],
+    visibility = [
+        "//visibility:public",
+    ],
+    deps = [
+        ":proto_utils",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+pybind_extension(
+    name = "proto",
+    srcs = ["proto.cc"],
+    visibility = [
+        "//visibility:public",
+    ],
+    deps = [":proto_utils"],
+)

@@ -3,8 +3,8 @@
 // All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-#ifndef PYBIND11_PROTOBUF_PROTO_UTILS_H_
-#define PYBIND11_PROTOBUF_PROTO_UTILS_H_
+#ifndef THIRD_PARTY_PYBIND11_PROTOBUF_PROTO_UTILS_H_
+#define THIRD_PARTY_PYBIND11_PROTOBUF_PROTO_UTILS_H_
 
 #include <pybind11/cast.h>
 #include <pybind11/functional.h>
@@ -17,17 +17,17 @@
 #include <stdexcept>
 #include <string>
 
-#include "google/protobuf/any.proto.h"
-#include "net/proto2/public/descriptor.h"
-#include "net/proto2/public/message.h"
-#include "net/proto2/public/reflection.h"
+#include "google/protobuf/any.pb.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
+#include "google/protobuf/reflection.h"
 
 namespace pybind11 {
 namespace google {
 
 // Alias for checking whether a c++ type is a proto.
 template <typename T>
-inline constexpr bool is_proto_v = std::is_base_of_v<proto2::Message, T>;
+inline constexpr bool is_proto_v = std::is_base_of_v<::google::protobuf::Message, T>;
 
 // copybara:strip_begin(core pybind11 patch required)
 // For limitations without this code, see README.md#protocol-buffer-holder.
@@ -63,30 +63,29 @@ inline bool IsWrappedCProto(handle handle) {
 }
 
 // Gets the field with the given name from the given message as a python object.
-object ProtoGetField(proto2::Message* message, std::string_view name);
-object ProtoGetField(proto2::Message* message,
-                     const proto2::FieldDescriptor* field_desc);
+object ProtoGetField(::google::protobuf::Message* message, std::string name);
+object ProtoGetField(::google::protobuf::Message* message,
+                     const ::google::protobuf::FieldDescriptor* field_desc);
 
 // Sets the field with the given name in the given message from a python object.
 // As in the native API, message, repeated, and map fields cannot be set.
-void ProtoSetField(proto2::Message* message, std::string_view name,
-                   handle value);
-void ProtoSetField(proto2::Message* message,
-                   const proto2::FieldDescriptor* field_desc, handle value);
+void ProtoSetField(::google::protobuf::Message* message, std::string name, handle value);
+void ProtoSetField(::google::protobuf::Message* message,
+                   const ::google::protobuf::FieldDescriptor* field_desc, handle value);
 
 // Initializes the fields in the given message from the the keyword args.
 // Unlike ProtoSetField, this allows setting message, map and repeated fields.
-void ProtoInitFields(proto2::Message* message, kwargs kwargs_in);
+void ProtoInitFields(::google::protobuf::Message* message, kwargs kwargs_in);
 
-// Wrapper around proto2::Message::CopyFrom which can efficiently copy from
+// Wrapper around ::google::protobuf::Message::CopyFrom which can efficiently copy from
 // either a wrapped C++ or native python proto. Throws an error if `other`
 // is not a proto of the correct type.
-void ProtoCopyFrom(proto2::Message* msg, handle other);
+void ProtoCopyFrom(::google::protobuf::Message* msg, handle other);
 
-// Wrapper around proto2::Message::MergeFrom which can efficiently merge from
+// Wrapper around ::google::protobuf::Message::MergeFrom which can efficiently merge from
 // either a wrapped C++ or native python proto. Throws an error if `other`
 // is not a proto of the correct type.
-void ProtoMergeFrom(proto2::Message* msg, handle other);
+void ProtoMergeFrom(::google::protobuf::Message* msg, handle other);
 
 // If py_proto is a native c or wrapped python proto, sets name and returns
 // true. If py_proto is not a proto, returns false.
@@ -106,7 +105,7 @@ bool PyProtoCheckType(handle py_proto) {
 // Returns whether py_proto is a proto based on whether it has a descriptor
 // with the name of the proto.
 template <>
-inline bool PyProtoCheckType<proto2::Message>(handle py_proto) {
+inline bool PyProtoCheckType<::google::protobuf::Message>(handle py_proto) {
   return PyProtoFullName(py_proto, nullptr);
 }
 
@@ -115,7 +114,7 @@ std::string PyProtoSerializeToString(handle py_proto);
 
 // Gets the descriptor for the proto specified by the argument, which can be a
 // native python proto, a wrapped C proto, or a string with the full type name.
-const proto2::Descriptor* PyProtoGetDescriptor(handle py_proto);
+const ::google::protobuf::Descriptor* PyProtoGetDescriptor(handle py_proto);
 
 // Allocate and return the ProtoType given by the template argument.
 // py_proto is not used in this version, but is used by a specialization below.
@@ -131,12 +130,12 @@ std::unique_ptr<ProtoType> PyProtoAllocateMessage(handle py_proto = handle(),
 // The type is pulled from the py_proto, which can be a native python proto,
 // a wrapped C proto, or a string with the full type name.
 template <>
-std::unique_ptr<proto2::Message> PyProtoAllocateMessage(handle py_proto,
+std::unique_ptr<::google::protobuf::Message> PyProtoAllocateMessage(handle py_proto,
                                                         kwargs kwargs_in);
 
 // Allocate and return a message instance for the given descriptor.
-std::unique_ptr<proto2::Message> PyProtoAllocateMessage(
-    const proto2::Descriptor* descriptor, kwargs kwargs_in);
+std::unique_ptr<::google::protobuf::Message> PyProtoAllocateMessage(
+    const ::google::protobuf::Descriptor* descriptor, kwargs kwargs_in);
 
 // Allocate a C++ proto of the same type as py_proto and copy the contents
 // from py_proto. This works whether py_proto is a native or wrapped proto.
@@ -170,8 +169,6 @@ decltype(auto) MakePickler() {
       },
       [](dict d) {
         auto message = PyProtoAllocateMessage<ProtoType>(d["type_name"]);
-        // TODO(b/145925674): skip creation of temporary string once bytes
-        // supports string_view casting.
         message->ParseFromString(std::string(d["serialized"].cast<bytes>()));
         return message;
       });
@@ -179,14 +176,14 @@ decltype(auto) MakePickler() {
 
 // Add bindings for the given concrete ProtoType, returning the class_ instance
 // so that type-specific bindings can be added. This should only be used with
-// well known types (google3/net/proto2/python/internal/well_known_types.py);
+//
 // all other message types should use RegisterProtoMessageType.
 template <typename ProtoType>
 auto ConcreteProtoMessageBindings(handle module) {
   // Register the type.
   auto* descriptor = ProtoType::GetDescriptor();
   const char* registered_name = descriptor->name().c_str();
-  class_<ProtoType, proto2::Message, std::shared_ptr<ProtoType>> message_c(
+  class_<ProtoType, ::google::protobuf::Message, std::shared_ptr<ProtoType>> message_c(
       module, registered_name);
   // Add a constructor.
   message_c.def(init([](kwargs kwargs_in) {
@@ -195,11 +192,14 @@ auto ConcreteProtoMessageBindings(handle module) {
   // Create a pickler for this type (the base class pickler will fail).
   message_c.def(MakePickler<ProtoType>());
   message_c.def("__copy__", [](object self) {
-      return PyProtoAllocateAndCopyMessage<ProtoType>(self);
-      });
-  message_c.def("__deepcopy__", [](object self, dict) {
-      return PyProtoAllocateAndCopyMessage<ProtoType>(self);
-      }, arg("memo"));
+    return PyProtoAllocateAndCopyMessage<ProtoType>(self);
+  });
+  message_c.def(
+      "__deepcopy__",
+      [](object self, dict) {
+        return PyProtoAllocateAndCopyMessage<ProtoType>(self);
+      },
+      arg("memo"));
   // Add the descriptor as a static field.
   message_c.def_readonly_static("DESCRIPTOR", descriptor);
   // Add bindings for each field, to avoid the FindFieldByName lookup.
@@ -207,10 +207,10 @@ auto ConcreteProtoMessageBindings(handle module) {
     auto* field_desc = descriptor->field(i);
     message_c.def_property(
         field_desc->name().c_str(),
-        [field_desc](proto2::Message* message) {
+        [field_desc](::google::protobuf::Message* message) {
           return ProtoGetField(message, field_desc);
         },
-        [field_desc](proto2::Message* message, handle value) {
+        [field_desc](::google::protobuf::Message* message, handle value) {
           ProtoSetField(message, field_desc, value);
         });
   }
@@ -222,11 +222,11 @@ auto ConcreteProtoMessageBindings(handle module) {
 void RegisterProtoBindings(module m);
 
 // If modifying the functions below, see
-// g3doc/pybind11_protobuf/README.md#importing-the-proto-module
+// g3doc/third_party/pybind11_protobuf/README.md#importing-the-proto-module
 
 // Returns true if the proto module has been imported.
 inline bool IsProtoModuleImported() {
-  return detail::get_type_info(typeid(proto2::Message));
+  return detail::get_type_info(typeid(::google::protobuf::Message));
 }
 
 // In debug mode, throws a type error if the proto module is not imported.
@@ -243,4 +243,4 @@ inline void CheckProtoModuleImported() {
 }  // namespace google
 }  // namespace pybind11
 
-#endif  // PYBIND11_PROTOBUF_PROTO_UTILS_H_
+#endif  // THIRD_PARTY_PYBIND11_PROTOBUF_PROTO_UTILS_H_
