@@ -5,13 +5,13 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/pytypes.h>
 
+#include <iostream>
 #include <memory>
 #include <optional>
 #include <string>
 #include <type_traits>
 #include <utility>
 
-#include "glog/logging.h"
 #include "google/protobuf/descriptor.pb.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/dynamic_message.h"
@@ -53,7 +53,7 @@ const GlobalState* GetGlobalState() {
 
       PyErr_Clear();
       try {
-        py::module_::import("google3.net.proto2.python.internal.cpp._message");
+        py::module_::import("google.protobuf.pyext._message");
       } catch (...) {
         // TODO(pybind11-infra): narrow down to expected exception(s).
         // Ignore any errors; they will appear immediately when the capsule
@@ -68,7 +68,7 @@ const GlobalState* GetGlobalState() {
       // When not using fast protos, we may construct protos from the default
       // pool.
       try {
-        auto m = py::module_::import("google3.net.proto2.python.public");
+        auto m = py::module_::import("google.protobuf");
         state->global_pool = m.attr("descriptor_pool").attr("Default")();
         state->factory = m.attr("message_factory")
                              .attr("MessageFactory")(state->global_pool);
@@ -269,7 +269,8 @@ class PythonDescriptorPoolWrapper {
       try {
         return GetFileDescriptorProto(f(), output);
       } catch (py::error_already_set& e) {
-        LOG(ERROR) << "DescriptorDatabase::" << method << " raised an error";
+        std::cerr << "DescriptorDatabase::" << method << " raised an error";
+
         // This prints and clears the error.
         e.restore();
         PyErr_Print();
@@ -327,7 +328,7 @@ bool PyProtoCopyToCProto(py::handle py_proto, ::google::protobuf::Message* messa
 
 std::pair<py::object, ::google::protobuf::Message*> AllocatePyFastCppProto(
     const ::google::protobuf::Descriptor* descriptor) {
-  CHECK(descriptor != nullptr);
+  assert(descriptor != nullptr);
   const auto* py_proto_api = GetPyProtoApi();
 
   // Create a PyDescriptorPool, temporarily, it will be used by the NewMessage
@@ -380,6 +381,27 @@ py::object ResolveDescriptor(py::object p, const ::google::protobuf::Descriptor*
   return d->containing_type() ? ResolveDescriptor(p, d->containing_type())
                                     .attr(d->name().c_str())
                               : p.attr(d->name().c_str());
+}
+
+std::string ReturnValuePolicyName(py::return_value_policy policy) {
+  switch (policy) {
+    case py::return_value_policy::automatic:
+      return "automatic";
+    case py::return_value_policy::automatic_reference:
+      return "automatic_reference";
+    case py::return_value_policy::take_ownership:
+      return "take_ownership";
+    case py::return_value_policy::copy:
+      return "copy";
+    case py::return_value_policy::move:
+      return "move";
+    case py::return_value_policy::reference:
+      return "reference";
+    case py::return_value_policy::reference_internal:
+      return "reference_internal";
+    default:
+      return "INVALID_ENUM_VALUE";
+  }
 }
 
 }  // namespace
@@ -436,7 +458,6 @@ py::handle GenericFastCppProtoCast(::google::protobuf::Message* src,
                                    py::handle parent, bool is_const) {
   assert(src != nullptr);
   switch (policy) {
-    case py::return_value_policy::automatic:
     case py::return_value_policy::copy: {
       auto [result, result_message] =
           pybind11_protobuf::AllocatePyFastCppProto(src->GetDescriptor());
@@ -465,7 +486,8 @@ py::handle GenericFastCppProtoCast(::google::protobuf::Message* src,
     } break;
 
     default:
-      throw py::cast_error("unhandled return_value_policy: should not happen!");
+      std::string message("pybind11_protobuf unhandled return_value_policy::");
+      throw py::cast_error(message + ReturnValuePolicyName(policy));
   }
 }
 

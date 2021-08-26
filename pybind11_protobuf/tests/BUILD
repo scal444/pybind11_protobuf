@@ -35,33 +35,6 @@ py_test(
     ],
 )
 
-pybind_extension(
-    name = "proto_example",
-    srcs = ["proto_example.cc"],
-    deps = [
-        ":test_cc_proto",
-        "//pybind11_protobuf:proto_casters",
-        "//pybind11_protobuf:proto_utils",
-    ],
-)
-
-py_test(
-    name = "proto_test",
-    srcs = ["proto_test.py"],
-    data = [
-        ":proto_example.so",
-        "//pybind11_protobuf:proto.so",
-        "@com_google_protobuf//:proto_api",
-    ],
-    python_version = "PY3",
-    deps = [
-        ":compare",
-        ":test_py_pb2",
-        "@com_google_absl_py//absl/testing:absltest",
-        "@com_google_absl_py//absl/testing:parameterized",
-    ],
-)
-
 proto_library(
     name = "test_proto",
     srcs = ["test.proto"],
@@ -93,75 +66,6 @@ py_proto_library(
     deps = [":extension_proto"],
 )
 
-py_test(
-    name = "import_order_a_test",
-    srcs = ["import_order_a_test.py"],
-    data = [
-        ":proto_example.so",
-        "//pybind11_protobuf:proto.so",
-    ],
-    python_version = "PY3",
-    deps = ["@com_google_absl_py//absl/testing:absltest"],
-)
-
-py_test(
-    name = "import_order_b_test",
-    srcs = ["import_order_b_test.py"],
-    data = [
-        ":proto_example.so",
-        "//pybind11_protobuf:proto.so",
-    ],
-    python_version = "PY3",
-    deps = ["@com_google_absl_py//absl/testing:absltest"],
-)
-
-# An example (and test) of using an alternative path for the protobuf module.
-# Note that "alternate_protobuf_module" is an arbitrary name; no corresponding
-# "alternate_protobuf_module.py/so" file is requried.
-# This test covers the case that the proto module only exists in linked symbols
-# and does not exist as a pybind_extension or py_library. This feature only
-# works with Python 3, therefore this test is left as a PY3-only test.
-pybind_extension(
-    name = "alternate_module_path_example",
-    srcs = ["alternate_module_path_example.cc"],
-    local_defines = ["PYBIND11_PROTOBUF_MODULE_PATH=alternate_protobuf_module"],
-    deps = [
-        ":test_cc_proto",
-        "//pybind11_protobuf:proto_casters",
-    ],
-)
-
-py_test(
-    name = "alternate_module_path_test",
-    srcs = ["alternate_module_path_test.py"],
-    data = [":alternate_module_path_example.so"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = ["@com_google_absl_py//absl/testing:absltest"],
-)
-
-pybind_extension(
-    name = "missing_import",
-    srcs = ["missing_import.cc"],
-    copts = ["-UNDEBUG"],
-    deps = [
-        ":test_cc_proto",
-        "//pybind11_protobuf:proto_casters",
-    ],
-)
-
-py_test(
-    name = "missing_import_test",
-    srcs = ["missing_import_test.py"],
-    data = [":missing_import.so"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":test_py_pb2",
-        "@com_google_absl_py//absl/testing:absltest",
-    ],
-)
-
 # Tests for native_proto_caster
 
 pybind_extension(
@@ -170,7 +74,6 @@ pybind_extension(
     deps = [
         ":test_cc_proto",
         "//pybind11_protobuf:native_proto_caster",
-        "@com_google_glog//:glog",
         "@com_google_protobuf//:protobuf",
     ],
 )

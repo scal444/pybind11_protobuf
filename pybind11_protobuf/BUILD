@@ -20,23 +20,6 @@ pybind_library(
     ],
 )
 
-pybind_library(
-    name = "proto_casters",
-    srcs = ["proto_casters.cc"],
-    hdrs = ["proto_casters.h"],
-    defines = [
-        # Force a build error when build variants are mixed.
-        "PYBIND11_PROTOBUF_MODE=pybind11_protos",
-    ],
-    visibility = [
-        "//visibility:public",
-    ],
-    deps = [
-        ":proto_utils",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
 pybind_extension(
     name = "proto",
     srcs = ["proto.cc"],
@@ -85,9 +68,9 @@ pybind_library(
     deps = [
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/strings",
-        "@com_google_glog//:glog",
         "@com_google_protobuf//:proto_api",
         "@com_google_protobuf//:protobuf",
+        "@com_google_protobuf//:python/google/protobuf/pyext/_message.so",  # fixdeps: keep
     ],
 )
 
